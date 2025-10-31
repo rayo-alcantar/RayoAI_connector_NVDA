@@ -6,7 +6,7 @@
 """NVDA connector for RayoAI (Windows).
 
 This NVDA global plugin allows sending the currently focused object image
-or an image URL (downloaded) to the RayoAI desktop app via its local IPC.
+to the RayoAI desktop app via its local IPC.
 
 
 Security considerations:
@@ -20,11 +20,9 @@ import socket
 import json
 import os
 import tempfile
-import time
 import ctypes
 from ctypes import wintypes
-from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+
 
 import addonHandler  # type: ignore
 import api  # type: ignore
@@ -210,59 +208,7 @@ def _capture_rect_to_bmp(left: int, top: int, right: int, bottom: int) -> str | 
 		user32.ReleaseDC(0, src_dc)
 
 
-def _download_image_to_temp(url: str, name_hint: str | None = None) -> str | None:
-	"""Download image from URL to a temp file and return its path.
 
-	Tries to infer extension from URL or content-type. Returns None on failure.
-	"""
-	try:
-		ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) NVDA-RayoAI/1.0"
-		req = Request(url, headers={"User-Agent": ua})
-		with urlopen(req, timeout=7.5) as resp:
-			data = resp.read()
-			ctype = resp.headers.get("Content-Type", "").lower()
-	except Exception:
-		return None
-
-	# Guess extension
-	ext = None
-	parsed = urlparse(url)
-	base = os.path.basename(parsed.path or "")
-	if "." in base:
-		ext = os.path.splitext(base)[1].lower()
-	if not ext:
-		if "image/png" in ctype:
-			ext = ".png"
-		elif "image/jpeg" in ctype or "image/jpg" in ctype:
-			ext = ".jpg"
-		elif "image/bmp" in ctype:
-			ext = ".bmp"
-		elif "image/gif" in ctype:
-			ext = ".gif"
-		else:
-			ext = ".png"
-
-	prefix = "rayoai_url_"
-	if name_hint:
-		try:
-			safe = "".join(ch for ch in name_hint if ch.isalnum() or ch in ("-", "_"))[:40]
-			if safe:
-				prefix = f"rayoai_{safe}_"
-		except Exception:
-			pass
-
-	fd, tmp_path = tempfile.mkstemp(prefix=prefix, suffix=ext)
-	os.close(fd)
-	try:
-		with open(tmp_path, "wb") as f:
-			f.write(data)
-		return tmp_path
-	except Exception:
-		try:
-			os.remove(tmp_path)
-		except Exception:
-			pass
-		return None
 
 
 class SettingsDlg(gui.settingsDialogs.SettingsPanel):
@@ -320,26 +266,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		except Exception:
 			return False
 
-	def _get_base_url(self):
-		obj = api.getNavigatorObject()
-		url = None
-		while obj:
-			obj = obj.parent
-			if not obj:
-				break
-			if obj.role != controlTypes.Role.DOCUMENT:
-				continue
-			try:
-				url = obj.IAccessibleObject.accValue(obj.IAccessibleChildID)
-			except Exception:
-				url = None
-			if url and isinstance(url, str) and url.startswith("http"):
-				try:
-					url = "/".join(url.split("/", 3)[:3])
-				except Exception:
-					pass
-				break
-		return url
+	#
 
 	@staticmethod
 	def _focus_rayo():
@@ -385,50 +312,3 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		else:
 			# translators: The image is reported to have been sent to rayoAI.
 			ui.message(_("Imagen del navegador de objetos enviada a RayoAI"))
-
-	@script(
-		gesture="kb:nvda+shift+l",
-			# Translators: It is explained that this key shortcut will download the SRC image and send it to RayoAI.
-		description=_("Descarga la imagen actual src y envíala a RayoAI"),
-	)
-	def script_sendURL(self, gesture):
-		nav = api.getNavigatorObject()
-		name = getattr(nav, "name", None)
-		try:
-			attrs = getattr(nav, "IA2Attributes", None)
-		except Exception:
-			attrs = None
-		if not attrs or "src" not in attrs:
-			# Translators: It reports that the SRC font was not found, and asks the user a question in the form of a hint about whether the font is an image.
-			ui.message(_("src no encontrado. ¿Es esta una imagen?"))
-			return
-
-		src = attrs.get("src")
-		if isinstance(src, str) and src.startswith("/"):
-			base = self._get_base_url()
-			if not base:
-				# translators: It is reported that the base url could not be found.
-				ui.message(_("No se puede recuperar la URL base"))
-				return
-			src = base + src
-
-		if not isinstance(src, str) or not src.lower().startswith("http"):
-			# Translators: It is reported that the SRC font is not compatible for download.
-			ui.message(_("Src no compatible para descargar."))
-			return
-
-		tmp = _download_image_to_temp(src, name_hint=name if isinstance(name, str) else None)
-		if not tmp:
-			ui.message(_("No se puede descargar la imagen."))
-			return
-
-		ok = _send_open_path(tmp)
-		if not ok:
-			ui.message(_("No se puede enviar la imagen a RayoAI. ¿Está funcionando?"))
-			return
-
-		if name:
-			ui.message(_("Imagen URL enviada a RayoAI: %s") % name)
-		else:
-			ui.message(_("Imagen URL enviada a RayoAI"))
-

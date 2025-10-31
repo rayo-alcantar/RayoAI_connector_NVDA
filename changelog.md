@@ -1,2 +1,2 @@
-Se crea la priemra versión oficial del addon
+se quita la opción src
 

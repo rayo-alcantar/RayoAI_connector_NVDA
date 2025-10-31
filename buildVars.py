@@ -6,10 +6,10 @@ def _(arg):
     return arg
 
 addon_info = {
-    "addon_name": "RayoAI connector for NVDA",
+    "addon_name": "RayoAI_connector_for_NVDA",
     "addon_summary": _("RayoAI connector for NVDA"),
     "addon_description": _("""Complemento para enviarle imágenes a RayoAI más rápidamente."""),
-    "addon_version": "2025.10",
+    "addon_version": "2025.10.1",
     "addon_author": "Angel Alcántar <angelalcantar@rayoscompany.com>",
     "addon_url": "https://github.com/rayo-alcantar/RayoAI_connector_NVDA",
     "addon_sourceURL": "https://github.com/rayo-alcantar/RayoAI_connector_NVDA",
