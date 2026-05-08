@@ -5,7 +5,7 @@ REM =====================================
 REM Config
 REM =====================================
 set "REPO_OWNER=rayo-alcantar"
-set "REPO_NAME=killprocess"
+set "REPO_NAME=RayoAI_connector_NVDA"
 set "REPO=%REPO_OWNER%/%REPO_NAME%"
 set "SCONS_CMD=scons"
 
