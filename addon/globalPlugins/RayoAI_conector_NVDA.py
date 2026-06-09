@@ -31,6 +31,7 @@ import controlTypes  # type: ignore
 import globalPluginHandler  # type: ignore
 import gui  # type: ignore
 import ui  # type: ignore
+import wx
 from scriptHandler import script  # type: ignore
 
 
@@ -303,8 +304,30 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
 		ok = _send_open_path(bmp_path)
 		if not ok:
-			# Translators: Message to indicate that the image could not be sent to RayoAI, the question is asked in the form of a suggestion for the user to verify if the program is open and working.
-			ui.message(_("No se puede enviar la imagen a RayoAI. ¿Está abierto y funcionando?"))
+			rayo_path = r"C:\Program Files\RayoAI\RayoAI.exe"
+			if os.path.exists(rayo_path):
+				# Translators: Message to indicate that RayoAI is being opened.
+				ui.message(_("Abriendo RayoAI..."))
+				try:
+					os.startfile(rayo_path)
+					def retry():
+						if _send_open_path(bmp_path):
+							if name:
+								# translators: The image is reported to have been sent to rayoAI.
+								ui.message(_("Imagen del objeto enviada a RayoAI: %s") % name)
+							else:
+								# translators: The image is reported to have been sent to rayoAI.
+								ui.message(_("Imagen del navegador de objetos enviada a RayoAI"))
+						else:
+							# Translators: Message to indicate that the image could not be sent to RayoAI.
+							ui.message(_("No se puede enviar la imagen a RayoAI. ¿Está abierto y funcionando?"))
+					wx.CallLater(10000, retry)
+				except Exception:
+					# Translators: Message to indicate that the image could not be sent to RayoAI.
+					ui.message(_("No se puede enviar la imagen a RayoAI. ¿Está abierto y funcionando?"))
+			else:
+				# Translators: Message when RayoAI is not found in the default path.
+				ui.message(_("No se pudo abrir RayoAI porque no se encontró en la carpeta de instalación habitual. Por favor abra RayoAI manualmente."))
 			return
 		if name:
 			# translators: The image is reported to have been sent to rayoAI.
